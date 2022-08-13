@@ -1,0 +1,120 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\
+{QuizController,QuizCategoriaController,PerguntaController,DificuldadeController,RespostaController};
+// Controllers
+
+// Index
+Route::get('/', function () {
+    return redirect()->route('quiz.index');
+})->middleware(['auth']);
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth'])->name('quiz.index');
+
+// Pergunta
+Route::prefix('perguntas')->middleware(['auth'])->group(function () {
+    Route::get('{id}/quizentrar/', [PerguntaController::class, 'index'])->name('pergunta.index');
+    Route::get('/cadastrar', [PerguntaController::class, 'store'])->name('pergunta.store');
+    Route::post('/{id}/atualizar', [PerguntaController::class,'update'])->name('pergunta.update');
+    Route::get('/{id}/ver', [PerguntaController::class, 'show'])->name('pergunta.show');
+    Route::post('/{idPergunta}/removerPergunta',[PerguntaController::class,'removerPergunta'])->name('pergunta.removerPergunta');
+});
+
+// Resposta
+Route::prefix('respostas')->middleware(['auth'])->group( function(){
+    Route::post('/cadastrar', [RespostaController::class, 'store'])->name('resposta.store');
+    Route::get('/{id}/removerResposta',[RespostaController::class,'removerResposta'])->name('resposta.removerResposta');
+});
+
+// Quiz
+Route::prefix('quiz')->middleware(['auth'])->group(function () {
+    Route::get('/', [QuizController::class, 'index'])->name('quiz.index');
+    Route::get('/criar', [QuizController::class, 'create'])->name('quiz.create');
+    Route::post('/pesquisar', [QuizController::class, 'pesquisa'])->name('quiz.pesquisa');
+    Route::post('/cadastrar', [QuizController::class, 'store'])->name('quiz.store');
+    Route::get('/{id}/ver', [QuizController::class, 'show'])->name('quiz.show');
+    Route::get('/{id}/play', [QuizController::class, 'play'])->name('quiz.playquiz');
+    Route::get('/tela', [TelaQuizController::class, 'index'])->name('quiz.telaquiz');
+    Route::get('/{id}/play', [QuizController::class, 'play'])->name('quiz.playquiz');
+    Route::get('/tela', [TelaQuizController::class, 'index'])->name('quiz.telaquiz');
+});
+
+// Dificuldades
+Route::prefix('dificuldades')->middleware(['auth'])->group(function () {
+    Route::get('/criar', [DificuldadeController::class, 'create'])->name('dificuldade.create');
+    Route::post('/cadastrar', [DificuldadeController::class, 'store'])->name('dificuldade.store');
+});
+
+// Categorias
+Route::prefix('categorias')->middleware(['auth'])->group(function () {
+    Route::get('/', [QuizCategoriaController::class, 'index'])->name('categoria.index');
+    Route::get('/criar', [QuizCategoriaController::class, 'create'])->name('categoria.create');
+    Route::get('/cadastrar', [QuizCategoriaController::class, 'store'])->name('categoria.store');
+    Route::get('/{id}/quizzes/', [QuizCategoriaController::class, 'list'])->name('categoria.list');
+});
+
+require __DIR__.'/auth.php';
+
+/**
+     * Criar um resposta
+     *
+     * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
+     */
+    public function store(Request $request)
+    {
+        $resposta = new Resposta($request->all());
+        $resposta->save();
+        return redirect()->route('pergunta.show', ['id'=>$resposta->id_resposta])
+                            ->with('success','resposta cadastrado com sucesso!');
+
+
+ /** 
+     * Criar um pergunta
+     *
+     * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
+     */
+    public function store(Request $request )
+    {
+        $pergunta = new Pergunta($request->all());  
+        $pergunta->save();   
+        $perguntas = Pergunta::all();
+        $quiz = Quiz::find($pergunta->id_quiz); 
+        $dificuldade = Dificuldade::all(); 
+        return view('quiz.show')
+                ->with(compact('quiz','pergunta','dificuldade','perguntas'),'success','pergunta cadastrado com sucesso!');
+    }
+
+
+/**
+     * Display the specified resource.
+     *
+     * @param  \App\Models\pergunta  $pergunta
+     * @return \Illuminate\Http\Response
+     */
+    public function show(int $id)
+    {
+        $pergunta = Pergunta::find($id);
+        $quiz = Quiz::all();
+        $dificuldade = Dificuldade::all();
+        $resposta = Resposta::orderBy('id_resposta','desc')->get();
+        $certas = Resposta::where('correto',1)->count();
+        // $respostas = Resposta::all();
+        return view('pergunta.show')
+            ->with(compact('pergunta','quiz','dificuldade','resposta','certas'));
+    }
+
+public function removerPergunta(int $id)
+    {
+        $pergunta = Pergunta::find($id);
+        $pergunta->delete();
+        $pergunta->save();
+        
+        return redirect()
+                ->back()
+                ->with('danger','Removido com sucesso!');
+    }
